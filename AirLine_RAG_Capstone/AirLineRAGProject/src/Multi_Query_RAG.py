@@ -47,6 +47,31 @@ class MultiQueryRAG:
             context += f"Turn {i} - Queries: {', '.join(queries)}\nResponse: {response}\n\n"
         return context
 
+    def expand_queries(self, query, num_alts=3):
+      """
+      Expand a single query into multiple variations (array of queries).
+      
+      Args:
+          query (str): Original user query
+          num_alts (int): Number of alternative phrasings to generate
+      
+      Returns:
+          list: Array of queries (original + alternatives)
+      """
+      prompt = f"Generate {num_alts} alternative phrasings of this query:\n\n{query}"
+      
+      response = client.chat.completions.create(
+          model="gpt-4o-mini",
+          messages=[{"role": "user", "content": prompt}],
+          max_tokens=200,
+          temperature=0.7
+      )
+      
+      # Split into array (each line becomes one query)
+      alts = response.choices[0].message.content.strip().split("\n")
+      queries = [query] + [alt.strip("-• ").strip() for alt in alts if alt.strip()]
+      return queries
+
     def multi_query_rag(self, queries, collections, top_k=3, fine_tune=False):
         """
         Performs Multi-Query RAG, querying ChromaDB collections for multiple queries.
@@ -126,7 +151,7 @@ class MultiQueryRAG:
                 messages=[{"role": "user", "content": prompt}],
                 
                 max_tokens=1000,
-                temperature=1000.7
+                temperature=0.7
             )
             
             answer = response.choices[0].message.content.strip()
